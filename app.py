@@ -1,7 +1,21 @@
-from flask import Flask, render_template
+import re
+import secrets
+from flask import Flask, render_template, request, redirect, url_for, flash, session
+from werkzeug.security import generate_password_hash
 from database.db import get_db, init_db, seed_db
 
 app = Flask(__name__)
+app.secret_key = 'spendly-secret-key-change-in-production'
+
+
+def csrf_token():
+    if 'csrf_token' not in session:
+        session['csrf_token'] = secrets.token_hex(32)
+    return session['csrf_token']
+
+
+# Make csrf_token available in templates
+app.jinja_env.globals['csrf_token'] = lambda: csrf_token()
 
 
 # ------------------------------------------------------------------ #
@@ -13,8 +27,58 @@ def landing():
     return render_template("landing.html")
 
 
-@app.route("/register")
+@app.route("/register", methods=["GET", "POST"])
 def register():
+    if request.method == "POST":
+        # CSRF validation
+        submitted_token = request.form.get("csrf_token", "")
+        if submitted_token != session.get("csrf_token"):
+            flash("Invalid form submission", "error")
+            return render_template("register.html")
+
+        name = request.form.get("name", "").strip()
+        email = request.form.get("email", "").strip().lower()
+        password = request.form.get("password", "")
+
+        # Validation
+        errors = []
+        if not name:
+            errors.append("Name is required")
+        if not email:
+            errors.append("Email is required")
+        elif not re.match(r"[^@]+@[^@]+\.[^@]+", email):
+            errors.append("Invalid email format")
+        if not password:
+            errors.append("Password is required")
+        elif len(password) < 8:
+            errors.append("Password must be at least 8 characters")
+
+        if errors:
+            for error in errors:
+                flash(error, "error")
+            return render_template("register.html", name=name, email=email)
+
+        # Check for duplicate email
+        conn = get_db()
+        cursor = conn.cursor()
+        cursor.execute("SELECT id FROM users WHERE email = ?", (email,))
+        if cursor.fetchone():
+            conn.close()
+            flash("An account with this email already exists", "error")
+            return render_template("register.html", name=name, email=email)
+
+        # Insert new user
+        password_hash = generate_password_hash(password)
+        cursor.execute(
+            "INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?)",
+            (name, email, password_hash)
+        )
+        conn.commit()
+        conn.close()
+
+        flash("Account created successfully! Please sign in.", "success")
+        return redirect(url_for("login"))
+
     return render_template("register.html")
 
 
