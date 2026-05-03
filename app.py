@@ -143,7 +143,39 @@ def logout():
 
 @app.route("/profile")
 def profile():
-    return "Profile page — coming in Step 4"
+    if not session.get("user_id"):
+        return redirect(url_for("login"))
+
+    # Hardcoded data for UI validation (Step 4 only)
+    user_info = {
+        "name": "Demo User",
+        "email": "demo@spendly.com",
+        "member_since": "January 2025"
+    }
+
+    summary_stats = {
+        "total_spent": 454.98,
+        "transaction_count": 8,
+        "top_category": "Food"
+    }
+
+    transactions = [
+        {"date": "2026-04-18", "description": "Gift for friend", "category": "Other", "amount": 50.00},
+        {"date": "2026-04-15", "description": "Restaurant dinner", "category": "Food", "amount": 32.50},
+        {"date": "2026-04-12", "description": "New headphones", "category": "Shopping", "amount": 89.00},
+    ]
+
+    category_breakdown = [
+        {"name": "Food", "total": 78.49, "percentage": 17},
+        {"name": "Shopping", "total": 89.00, "percentage": 20},
+        {"name": "Bills", "total": 120.00, "percentage": 26},
+    ]
+
+    return render_template("profile.html",
+                           user_info=user_info,
+                           summary_stats=summary_stats,
+                           transactions=transactions,
+                           category_breakdown=category_breakdown)
 
 
 @app.route("/expenses/add")
