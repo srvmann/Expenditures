@@ -12,7 +12,7 @@ Implements user login and logout functionality with session-based authentication
 - `POST /login` — Process login credentials — public
 - `GET /logout` — Clear session and redirect — logged-in only
 
-## Database changes
+## Database change
 No new tables or columns. Uses existing `users` table.
 
 ## Templates
